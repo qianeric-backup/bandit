@@ -11,6 +11,28 @@ from bandit.core import extension_loader
 LOG = logging.getLogger(__name__)
 
 
+def _normalise_test_config(cfg):
+    """Wrap scalar test settings into single-item lists.
+
+    Every plugin setting is a list, so a single value is naturally written
+    without brackets:
+
+        [tool.bandit.assert_used]
+        skips = 'tests/**.py'
+
+    Iterating that string yields its characters, and a ``*`` among them is a
+    glob that matches every filename, so the test silently stops reporting
+    anything at all. Treat a bare string as the one-element list it means.
+    """
+    if not isinstance(cfg, dict):
+        return cfg
+
+    return {
+        key: [value] if isinstance(value, str) else value
+        for key, value in cfg.items()
+    }
+
+
 class BanditTestSet:
     def __init__(self, config, profile=None):
         if not profile:
@@ -95,6 +117,8 @@ class BanditTestSet:
                 if cfg is None:
                     genner = importlib.import_module(plugin.plugin.__module__)
                     cfg = genner.gen_config(plugin.plugin._takes_config)
+                else:
+                    cfg = _normalise_test_config(cfg)
                 plugin.plugin._config = cfg
             for check in plugin.plugin._checks:
                 self.tests.setdefault(check, []).append(plugin.plugin)

@@ -167,3 +167,26 @@ class BanditTestSetTests(testtools.TestCase):
         self.assertNotIn("Import", blacklist._config)
         self.assertNotIn("ImportFrom", blacklist._config)
         self.assertEqual(1, len(blacklist._config["Call"]))
+
+    def test_scalar_test_config_is_wrapped(self):
+        # A one-value setting is naturally written without brackets, and
+        # iterating the raw string used to yield characters instead of the
+        # glob (https://github.com/PyCQA/bandit/issues/1478).
+        normalised = test_set._normalise_test_config(
+            {"skips": "tests/**.py"}
+        )
+
+        self.assertEqual(["tests/**.py"], normalised["skips"])
+
+    def test_non_scalar_test_config_is_untouched(self):
+        config = {
+            "skips": ["a.py", "b.py"],
+            "check_typed_exception": False,
+            "threshold": 2048,
+        }
+
+        self.assertEqual(config, test_set._normalise_test_config(config))
+
+    def test_non_dict_test_config_is_untouched(self):
+        self.assertEqual([], test_set._normalise_test_config([]))
+        self.assertIsNone(test_set._normalise_test_config(None))
